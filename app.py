@@ -144,8 +144,27 @@ def register():
     if not username or not email or not password:
         return jsonify({"error": "username, email, and password are required"}), 400
 
-    # temporary success response just to test input handling
-    return jsonify({"message": "validated OK"}), 201
+    # 1) hash the password
+    password_hash = generate_password_hash(password)
+
+    # 2) insert into the database with a parameterized query
+    db = get_db()
+    cursor = db.execute(
+        "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
+        (username, email, password_hash),
+    )
+    db.commit()
+
+    new_id = cursor.lastrowid
+
+    # 3) return safe response (no password / no hash)
+    return jsonify(
+        {
+            "id": new_id,
+            "username": username,
+            "email": email,
+        }
+    ), 201
 
 
 
