@@ -173,6 +173,10 @@ def login():
     username = data.get("username")
     password = data.get("password")
 
+    # NEW: validate required fields
+    if not username or not password:
+        return jsonify({"error": "username and password are required"}), 400
+
     db = get_db()
     user = db.execute(
         "SELECT id, username, password_hash FROM users WHERE username = ?",
