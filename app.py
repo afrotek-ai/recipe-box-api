@@ -144,20 +144,21 @@ def register():
     if not username or not email or not password:
         return jsonify({"error": "username, email, and password are required"}), 400
 
-    # 1) hash the password
     password_hash = generate_password_hash(password)
 
-    # 2) insert into the database with a parameterized query
     db = get_db()
-    cursor = db.execute(
-        "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
-        (username, email, password_hash),
-    )
-    db.commit()
+    try:
+        cursor = db.execute(
+            "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
+            (username, email, password_hash),
+        )
+        db.commit()
+    except sqlite3.IntegrityError:
+        # UNIQUE constraint failed (duplicate username or email)
+        return jsonify({"error": "username or email already exists"}), 409
 
     new_id = cursor.lastrowid
 
-    # 3) return safe response (no password / no hash)
     return jsonify(
         {
             "id": new_id,
@@ -166,7 +167,23 @@ def register():
         }
     ), 201
 
-
-
+''' Delete this befor deployment, this is just a check for info written to table
+@app.get("/debug/users")
+def debug_users():
+    db = get_db()
+    rows = db.execute("SELECT id, username, email, password_hash FROM users").fetchall()
+    users = []
+    for row in rows:
+        users.append(
+            {
+                "id": row["id"],
+                "username": row["username"],
+                "email": row["email"],
+                "password_hash": row["password_hash"],
+            }
+        )
+    return jsonify(users)
+'''
+    
 if __name__ == "__main__":
     app.run(debug=True)
