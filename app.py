@@ -173,8 +173,21 @@ def login():
     username = data.get("username")
     password = data.get("password")
 
-    # we'll fill this in next
-    return jsonify({"error": "Not implemented yet"}), 501
+    db = get_db()
+    user = db.execute(
+        "SELECT id, username, password_hash FROM users WHERE username = ?",
+        (username,),
+    ).fetchone()
+
+    # generic failure if user missing OR password wrong
+    if user is None or not check_password_hash(user["password_hash"], password):
+        return jsonify({"error": "Invalid username or password"}), 401
+
+    # success: return authenticated identity
+    return jsonify({
+        "id": user["id"],
+        "username": user["username"],
+    }), 200
 
 
 ''' Delete this befor deployment, this is just a check for info written to table
