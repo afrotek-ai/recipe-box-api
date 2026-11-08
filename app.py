@@ -9,7 +9,7 @@ import sqlite3
 
 from flask import Flask, g, jsonify, request
 from werkzeug.security import generate_password_hash
-
+from werkzeug.security import check_password_hash
 
 DATABASE = "recipes.db"
 
@@ -166,6 +166,16 @@ def register():
             "email": email,
         }
     ), 201
+
+@app.post("/login")
+def login():
+    data = request.get_json() or {}
+    username = data.get("username")
+    password = data.get("password")
+
+    # we'll fill this in next
+    return jsonify({"error": "Not implemented yet"}), 501
+
 
 ''' Delete this befor deployment, this is just a check for info written to table
 @app.get("/debug/users")
