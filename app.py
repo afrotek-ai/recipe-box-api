@@ -70,9 +70,27 @@ def get_recipe(recipe_id):
 
 @app.post("/recipes")
 def create_recipe():
+    # 1. Read the Authorization header
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return jsonify({"error": "missing or invalid authorization header"}), 401
+
+    token = auth_header[len("Bearer "):].strip()
+
+    # 2. Verify the token
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except jwt.PyJWTError:
+        return jsonify({"error": "invalid or unverifiable token"}), 401
+
+    # 3. Extract identity (who is asking)
+    user_id = payload.get("sub")
+
+    # (for now we’re not *using* user_id in the insert; just having it is the goal)
     data = request.get_json(silent=True)
     if not data or not data.get("title") or not data.get("ingredients"):
         return jsonify({"error": "title and ingredients are required"}), 400
+
     db = get_db()
     try:
         cur = db.execute(
