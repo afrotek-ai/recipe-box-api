@@ -274,6 +274,13 @@ def debug_users():
         )
     return jsonify(users)
 '''
-    
+''' 
+Added this note so I could re commit the changes
+    git status
+    git add app.py
+    git commit -m "Protect recipe write routes with JWT auth"
+    git push
+'''
+
 if __name__ == "__main__":
     app.run(debug=True)
