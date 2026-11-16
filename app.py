@@ -80,7 +80,11 @@ def create_recipe():
     # 2. Verify the token
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except jwt.ExpiredSignatureError:
+        # token is well-formed and signed, but too old
+        return jsonify({"error": "token has expired; please log in again"}), 401
     except jwt.PyJWTError:
+        # any other JWT problem (bad signature, malformed, wrong algo, etc.)
         return jsonify({"error": "invalid or unverifiable token"}), 401
 
     # 3. Extract identity (who is asking)
@@ -243,7 +247,7 @@ def login():
     payload = {
         "sub": str(user["id"]),             # subject must be a string
         "username": user["username"],
-        "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+        "exp": datetime.now(timezone.utc) + timedelta(seconds=60),
     }
     if JWT_SECRET is None:
         return jsonify({"error": "JWT_SECRET is not set"}), 500
