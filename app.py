@@ -114,6 +114,20 @@ def create_recipe():
 
 @app.patch("/recipes/<int:recipe_id>")
 def update_recipe(recipe_id):
+    # Require a valid bearer token
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return jsonify({"error": "missing or invalid authorization header"}), 401
+
+    token = auth_header[len("Bearer "):].strip()
+
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except jwt.PyJWTError:
+        return jsonify({"error": "invalid or unverifiable token"}), 401
+
+    user_id = payload.get("sub")  # who is asking (not used further yet)
+
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "a JSON body is required"}), 400
@@ -146,6 +160,20 @@ def update_recipe(recipe_id):
 
 @app.delete("/recipes/<int:recipe_id>")
 def delete_recipe(recipe_id):
+    # Require a valid bearer token
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return jsonify({"error": "missing or invalid authorization header"}), 401
+
+    token = auth_header[len("Bearer "):].strip()
+
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except jwt.PyJWTError:
+        return jsonify({"error": "invalid or unverifiable token"}), 401
+
+    user_id = payload.get("sub")  # who is asking
+
     db = get_db()
     cur = db.execute("DELETE FROM recipes WHERE id = ?", (recipe_id,))
     db.commit()
