@@ -8,7 +8,9 @@ CREATE TABLE IF NOT EXISTS recipes (
     title TEXT NOT NULL UNIQUE,
     ingredients TEXT NOT NULL,
     instructions TEXT NOT NULL DEFAULT '',
-    is_public INTEGER NOT NULL DEFAULT 1
+    is_public INTEGER NOT NULL DEFAULT 1,
+    owner_id INTEGER NOT NULL,
+    FOREIGN KEY (owner_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -19,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 """
 
+"""
 SEED = [
     (
         "Shakshuka",
@@ -39,18 +42,12 @@ SEED = [
         0,
     ),
 ]
-
+"""
 connection = sqlite3.connect("recipes.db")
 connection.executescript(SCHEMA)
 existing = connection.execute("SELECT COUNT(*) FROM recipes").fetchone()[0]
 if existing == 0:
-    connection.executemany(
-        "INSERT INTO recipes (title, ingredients, instructions, is_public)"
-        " VALUES (?, ?, ?, ?)",
-        SEED,
-    )
-    connection.commit()
-    print(f"Created recipes.db and seeded {len(SEED)} recipes.")
+    print("Created recipes.db with empty recipes table (no seed data).")
 else:
     print(f"recipes.db already has {existing} recipes - nothing to do.")
 connection.close()
