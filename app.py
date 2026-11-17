@@ -44,6 +44,7 @@ def recipe_to_dict(row):
         "ingredients": row["ingredients"],
         "instructions": row["instructions"],
         "is_public": bool(row["is_public"]),
+        "owner_id": row["owner_id"],  # new
     }
 
 
@@ -98,13 +99,14 @@ def create_recipe():
     db = get_db()
     try:
         cur = db.execute(
-            "INSERT INTO recipes (title, ingredients, instructions, is_public)"
-            " VALUES (?, ?, ?, ?)",
+            "INSERT INTO recipes (title, ingredients, instructions, is_public, owner_id)"
+            " VALUES (?, ?, ?, ?, ?)",
             (
                 data["title"],
                 data["ingredients"],
                 data.get("instructions", ""),
                 1 if data.get("is_public", True) else 0,
+                user_id,  # from the JWT payload
             ),
         )
         db.commit()
