@@ -133,6 +133,7 @@ def update_recipe(recipe_id):
         return jsonify({"error": "invalid or unverifiable token"}), 401
 
     user_id = payload.get("sub")  # who is asking
+    role = payload.get("role")
 
     db = get_db()
 
@@ -143,9 +144,12 @@ def update_recipe(recipe_id):
     if row is None:
         return jsonify({"error": "recipe not found"}), 404
 
-    # 2️⃣ Enforce ownership
-    if str(row["owner_id"]) != str(user_id):
-        return jsonify({"error": "you do not own this recipe"}), 403
+    # 2️⃣ Enforce ownership or admin
+    is_owner = str(row["owner_id"]) == str(user_id)
+    is_admin = role == "admin"
+
+    if not (is_owner or is_admin):
+        return jsonify({"error": "you do not have permission to modify this recipe"}), 403
 
     # 3️⃣ Existing update logic
     data = request.get_json(silent=True)
@@ -195,6 +199,7 @@ def delete_recipe(recipe_id):
         return jsonify({"error": "invalid or unverifiable token"}), 401
 
     user_id = payload.get("sub")  # who is asking
+    role = payload.get("role")
 
     db = get_db()
 
@@ -206,8 +211,11 @@ def delete_recipe(recipe_id):
         return jsonify({"error": "recipe not found"}), 404
 
     # 2️⃣ Enforce ownership
-    if str(row["owner_id"]) != str(user_id):
-        return jsonify({"error": "you do not own this recipe"}), 403
+    is_owner = str(row["owner_id"]) == str(user_id)
+    is_admin = role == "admin"
+
+    if not (is_owner or is_admin):
+        return jsonify({"error": "you do not have permission to modify this recipe"}), 403
 
     # 3️⃣ Perform the delete
     db.execute("DELETE FROM recipes WHERE id = ?", (recipe_id,))
@@ -265,7 +273,7 @@ def login():
 
     db = get_db()
     user = db.execute(
-        "SELECT id, username, password_hash FROM users WHERE username = ?",
+        "SELECT id, username, password_hash, role FROM users WHERE username = ?",
         (username,),
     ).fetchone()
 
@@ -277,7 +285,8 @@ def login():
     payload = {
         "sub": str(user["id"]),             # subject must be a string
         "username": user["username"],
-        "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+        "role": user["role"],
+        "exp": datetime.now(timezone.utc) + timedelta(hours=4),
     }
     if JWT_SECRET is None:
         return jsonify({"error": "JWT_SECRET is not set"}), 500
@@ -287,6 +296,7 @@ def login():
     return jsonify({
         "id": user["id"],
         "username": user["username"],
+        "role": user["role"],  # optional but handy
         "token": token,
     }), 200
 
