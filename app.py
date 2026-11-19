@@ -14,12 +14,45 @@ from datetime import datetime, timedelta, timezone
 import os
 from dotenv import load_dotenv
 
+from functools import wraps
+from flask import g
+
 load_dotenv()
 JWT_SECRET = os.getenv("JWT_SECRET")
 
 DATABASE = "recipes.db"
 
 app = Flask(__name__)
+
+def require_auth(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        # 1) Read the Authorization header
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return jsonify({"error": "missing or invalid authorization header"}), 401
+
+        token = auth_header[len("Bearer "):].strip()
+
+        # 2) Verify the token
+        try:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        except jwt.ExpiredSignatureError:
+            return jsonify({"error": "token has expired; please log in again"}), 401
+        except jwt.PyJWTError:
+            return jsonify({"error": "invalid or unverifiable token"}), 401
+
+        # 3) Store identity for the route to use
+        g.current_user = {
+            "id": payload.get("sub"),
+            "role": payload.get("role"),
+            "raw": payload,
+        }
+
+        # 4) Continue to the original route
+        return f(*args, **kwargs)
+
+    return wrapper
 
 
 def get_db():
@@ -70,14 +103,16 @@ def get_recipe(recipe_id):
 
 
 @app.post("/recipes")
+@require_auth
 def create_recipe():
+    ''' Taken out because added @require_auth and def require_auth(f): to handle tokens, instead of having each route verify.
     # 1. Read the Authorization header
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         return jsonify({"error": "missing or invalid authorization header"}), 401
 
     token = auth_header[len("Bearer "):].strip()
-
+    
     # 2. Verify the token
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
@@ -87,9 +122,9 @@ def create_recipe():
     except jwt.PyJWTError:
         # any other JWT problem (bad signature, malformed, wrong algo, etc.)
         return jsonify({"error": "invalid or unverifiable token"}), 401
-
+    '''
     # 3. Extract identity (who is asking)
-    user_id = payload.get("sub")
+    user_id = g.current_user["id"]
 
     # (for now we’re not *using* user_id in the insert; just having it is the goal)
     data = request.get_json(silent=True)
@@ -119,7 +154,9 @@ def create_recipe():
 
 
 @app.patch("/recipes/<int:recipe_id>")
+@require_auth
 def update_recipe(recipe_id):
+    '''
     # Require a valid bearer token
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
@@ -134,7 +171,7 @@ def update_recipe(recipe_id):
 
     user_id = payload.get("sub")  # who is asking
     role = payload.get("role")
-
+    '''
     db = get_db()
 
     # 1️⃣ Load the recipe first
@@ -145,6 +182,9 @@ def update_recipe(recipe_id):
         return jsonify({"error": "recipe not found"}), 404
 
     # 2️⃣ Enforce ownership or admin
+    user_id = g.current_user["id"]
+    role = g.current_user["role"]
+
     is_owner = str(row["owner_id"]) == str(user_id)
     is_admin = role == "admin"
 
@@ -185,7 +225,9 @@ def update_recipe(recipe_id):
 
 
 @app.delete("/recipes/<int:recipe_id>")
+@require_auth
 def delete_recipe(recipe_id):
+    '''
     # Require a valid bearer token
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
@@ -200,9 +242,9 @@ def delete_recipe(recipe_id):
 
     user_id = payload.get("sub")  # who is asking
     role = payload.get("role")
-
+    '''
     db = get_db()
-
+    
     # 1️⃣ Load the recipe first
     row = db.execute(
         "SELECT * FROM recipes WHERE id = ?", (recipe_id,)
@@ -211,6 +253,9 @@ def delete_recipe(recipe_id):
         return jsonify({"error": "recipe not found"}), 404
 
     # 2️⃣ Enforce ownership
+    user_id = g.current_user["id"]
+    role = g.current_user["role"]
+    
     is_owner = str(row["owner_id"]) == str(user_id)
     is_admin = role == "admin"
 
