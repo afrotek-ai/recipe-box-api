@@ -38,6 +38,17 @@ Protected routes such as PATCH /recipes/<int:recipe_id> are wrapped with a share
 Conclusion: Authentication is enforced via centralized middleware rather than duplicated checks in each route.
 
 
+- 2026-11-22: Exploit regression – expired token reuse:
+
+Previously, a valid owner token for PATCH /recipes/2 returned 200 OK and allowed updates. I re-tried PATCH /recipes/2 using an expired token for the same user.
+
+The API now returns 401 UNAUTHORIZED with error "token has expired; please log in again".
+
+Conclusion: The API correctly rejects expired tokens; old tokens cannot be reused to modify resources.
+
+
+
+
 
 
 
