@@ -31,7 +31,11 @@ Conclusion: Updating recipes requires a valid Bearer token; anonymous clients ca
   Conclusion: The API enforces ownership correctly (403 for cross-user) and allows both owners and admins to modify recipes.
 
 
+- 2026-11-22: Centralized middleware:
 
+Protected routes such as PATCH /recipes/<int:recipe_id> are wrapped with a shared @require_auth decorator. require_auth reads the Authorization header, verifies the Bearer token format, and blocks requests with a 401 before the route handler runs.
+
+Conclusion: Authentication is enforced via centralized middleware rather than duplicated checks in each route.
 
 
 
